@@ -10,6 +10,7 @@ import tensorflow as tf
 from tensorflow.keras.applications import vgg19
 from PIL import Image
 import matplotlib.pyplot as plt
+import time
 
 def load_img(path):
     img = Image.open(path)
@@ -161,8 +162,9 @@ def transfer(content, style_path, num_iters=1000, content_wt=1e3, style_wt=1e-2,
     max_vals = 255 - norm_means
 
     imgs = []
+    div = num_iters // 10
     for i in range(num_iters):
-        if i%100==0:
+        if i%div==0:
             print('Progress: ', i/num_iters)
         grads, all_loss = compute_gradients(cfg)
         loss, style_score, content_score = all_loss
@@ -188,24 +190,35 @@ def main_vid(vid, style):
     scale = 512/long
     frame_width = round(frame_width*scale)
     frame_height = round(frame_height*scale)
-    out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_height, frame_width))
+    out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 10, (frame_width, frame_height))
     fps = cap.get(cv2.CAP_PROP_FPS)
+    count = 0
     while True:
         ret, frame = cap.read()
         if ret:
-            best_img, best_loss = transfer(frame, style, vid=True)
-            out.write(best_img)
+            if count % 3 == 0:
+                best_img, best_loss = transfer(frame, style, num_iters=100, vid=True)
+
+                out.write(best_img)
         else:
             break
+        count += 1
     cap.release()
     out.release()
 
 def main_pic(content, style):
-    best_img, best_loss = transfer(content, style)
-    print(best_img.shape)
+    best_img, best_loss = transfer(content, style, num_iters=100)
     show_results(best_img, 'chistar')
 
 if __name__ == '__main__':
-    content = 'chicago.jpg'
+    # content = 'chicago.jpg'
+    # style = 'wave.jpg'
+    # start = time.time()
+    # main_pic(content, style)
+    # print(time.time() - start)
+
+    content = None # content video in mp4 here
     style = 'wave.jpg'
-    main_pic(content, style)
+    start = time.time()
+    main_vid(content, style)
+    print(time.time() - start)
